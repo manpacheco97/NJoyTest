@@ -100,7 +100,7 @@
         optionalServices: [SVC_ACE_VAPING, SVC_PASSWORD, SVC_DEVICE_INFO]
       }
 
-      console.log('Requesting BLE device info...')
+      log('Requesting BLE device info...')
       navigator.bluetooth.requestDevice(options)
       .then(device => {
         log('Connecting to GATT Server...');
