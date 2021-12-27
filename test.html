@@ -56,7 +56,6 @@
       const CHR_PASSWORD = '7df106ea-d3b0-ba05-977a-e1fdddf0e978' 
       const CHR_RNDOM_NMBR = 'bd28ebcc-3bc2-9723-123d-f0911fa21670'
       
-
       const SVC_ACE_VAPING = 'ae506062-db3d-9992-c0e2-f346deef8fab'
       const CHR_POWER_LEVEL = '0c36dc5b-7af1-d9c1-12de-736622b97dda'
       const CHR_UNLCK_TIMEOUT = 'dad2d1d4-dbf7-ad85-842b-7107f5de655b'
@@ -83,12 +82,14 @@
       .then(server => {
         console.log('Gatt server status: ' + server.connected)
         console.log('Getting Service...');
-        return server.getPrimaryService(SVC_PASSWORD);
+     //   return server.getPrimaryService(SVC_PASSWORD);
+       return server.getPrimaryService(SVC_ACE_VAPING);
       }) 
       .then((service) => {
           console.log('Gatt service uuid: ' + service.uuid)
           console.log('Getting Characteristics...');
-          return service.getCharacteristic(CHR_RNDOM_NMBR);
+         // return service.getCharacteristic(CHR_RNDOM_NMBR);
+          return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
       })
       .then(characteristic => {
           //characteristic.startNotifications()
