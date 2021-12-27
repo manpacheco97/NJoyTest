@@ -8,7 +8,7 @@
   </form>
   
   <script>
-  var Output = {
+   var Output = {
     log: function() {
       var line = Array.prototype.slice.call(arguments).map(function(argument) {
         return typeof argument === 'string' ? argument : JSON.stringify(argument);
@@ -21,9 +21,6 @@
       document.querySelector('#log').textContent = '';
     },
   };
-  </script>
-  
-  <script>
   log = Output.log;
   var deviceName = 'Ace'
     function isWebBLEAvailable(){
@@ -57,9 +54,9 @@
         let queue = Promise.resolve();
         services.forEach(service => {
           queue = queue.then(_ => service.getCharacteristics().then(characteristics => {
-            console.log('> Service: ' + service.uuid);
+            log('> Service: ' + service.uuid);
             characteristics.forEach(characteristic => {
-              console.log('>> Characteristic: ' + characteristic.uuid + ' ' +
+              log('>> Characteristic: ' + characteristic.uuid + ' ' +
                   getSupportedProperties(characteristic));
             });
           }));
@@ -67,7 +64,7 @@
         return queue;
       })
       .catch(error => {
-        console.log('Argh! ' + error);
+        log('Argh! ' + error);
       });
     }
    function hex_to_ascii(str1)
@@ -106,12 +103,12 @@
       console.log('Requesting BLE device info...')
       navigator.bluetooth.requestDevice(options)
       .then(device => {
-        console.log('Connecting to GATT Server...');
+        log('Connecting to GATT Server...');
         return device.gatt.connect();
       })
       .then(server => {
-        console.log('Gatt server status: ' + server.connected)
-        console.log('Getting Service...');
+        log('Gatt server status: ' + server.connected)
+        log('Getting Service...');
         return server.getPrimaryService(SVC_PASSWORD);
         //return server.getPrimaryService(SVC_ACE_VAPING);
       }) 
