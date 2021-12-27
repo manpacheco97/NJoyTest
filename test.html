@@ -3,15 +3,35 @@
  </head>
  <body>
   <form>
-    <button>Connect</button>
+   <button>Connect</button>
+   <pre id="log"></pre>
   </form>
+  
   <script>
+  var Output = {
+    log: function() {
+      var line = Array.prototype.slice.call(arguments).map(function(argument) {
+        return typeof argument === 'string' ? argument : JSON.stringify(argument);
+      }).join(' ');
+
+      document.querySelector('#log').textContent += line + '\n';
+    },
+
+    clearLog: function() {
+      document.querySelector('#log').textContent = '';
+    },
+  };
+  </script>
+  
+  <script>
+  log = Output.log;
   var deviceName = 'Ace'
     function isWebBLEAvailable(){
       if(!navigator.bluetooth){
-        console.log("Web Bluetooth is not available!")
+        log("Web Bluetooth is not available!")
         return false
       }
+      Output.clearLog()
       return true
     }
 
@@ -22,18 +42,18 @@
         ]
       }
 
-      console.log('Requesting BLE device info...')
+      log('Requesting BLE device info...')
       navigator.bluetooth.requestDevice(options)
       .then(device => {
-        console.log('Connecting to GATT Server...');
+        log('Connecting to GATT Server...');
         return device.gatt.connect();
       })
       .then(server => {
-        console.log('Getting Services...');
+        log('Getting Services...');
         return server.getPrimaryServices();
       })
       .then(services => {
-        console.log('Getting Characteristics...');
+        log('Getting Characteristics...');
         let queue = Promise.resolve();
         services.forEach(service => {
           queue = queue.then(_ => service.getCharacteristics().then(characteristics => {
