@@ -98,7 +98,7 @@
       .then((service) => {
           console.log('Gatt service uuid: ' + service.uuid)
           console.log('Getting Characteristics...');
-          return service.getCharacteristic(CHR_UNLOCK_COUNT);
+          return service.getCharacteristic(CHR_RNDOM_NMBR);
           //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
       })
       .then(characteristic => {
