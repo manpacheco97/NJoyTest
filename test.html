@@ -113,29 +113,31 @@
         //return server.getPrimaryService(SVC_ACE_VAPING);
       }) 
       .then((service) => {
-          console.log('Gatt service uuid: ' + service.uuid)
-          console.log('Getting Characteristics...');
+          log('Gatt service uuid: ' + service.uuid)
+          log('Getting Characteristics...');
           return service.getCharacteristic(CHR_RNDOM_NMBR);
           //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
       })
       .then(characteristic => {
           //characteristic.startNotifications()
-          console.log('Gatt characteristic uuid: ' + characteristic.uuid)
+          log('Gatt characteristic uuid: ' + characteristic.uuid)
          // console.log('Characteristic value: '+ characteristic.value)
           return characteristic.readValue();
       })
       .then(value => {
-          console.log('Entre en value')
-          console.log(value);
+          log('Entre en value')
+          log(value);
           this.isLoader = false;
           //value = hex_to_ascii(value);
-          console.log('De hex a ascii: ' + value);
+          log('De hex a ascii: ' + value);
           let decoder = new TextDecoder('utf-8');
-          console.log(decoder.decode(value));
+          log(decoder.decode(value));
       })
       .catch(error => {
           this.isLoader = false;
           this.errorMessage = error.message;
+          log('Argh! ' + error);
+          log('Message! ' + errorMessage);
       });
     }
 
