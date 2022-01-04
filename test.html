@@ -76,6 +76,50 @@
      }
      return str;
     }
+   
+   
+   function writeCharacteristic(){
+    const SVC_OTA = '1D14D6EE-FD63-4FA1-BFA4-8F47B42119F0'
+    const CHR_OTA = 'F7BF3564-FB6D-4E53-88A4-5E37E0326063'
+    
+    const UPG_PROC_VAL = 0x00
+    const UPG_FINISHED_VAL = 0x03
+    const UPG_CLOSE_CONNECT_VAL = 0x04
+    
+    let options ={
+        filters: [
+          { name: deviceName }
+        ],
+        optionalServices: [SVC_OTA]
+      }
+
+      log('Requesting BLE device info...')
+      navigator.bluetooth.requestDevice(options)
+      .then(device => {
+        log('Connecting to GATT Server...');
+        return device.gatt.connect();
+      })
+      .then(server => {
+        log('Gatt server status: ' + server.connected)
+        log('Getting Service...');
+        return server.getPrimaryService(SVC_OTA);
+      }) 
+      .then((service) => {
+          log('Gatt service uuid: ' + service.uuid)
+          log('Getting Characteristics...');
+          return service.getCharacteristic(CHR_OTA);
+      })
+      .then(characteristic => {
+        log('Gatt characteristic uuid: ' + characteristic.uuid)
+        log('Getting Descriptor...');
+        console.log('Characteristic value: '+ characteristic.getDescriptors())
+        return characteristic.getDescriptor('gatt.characteristic_user_description');
+      })    
+    
+  })
+   }
+   
+   
     function getCharacteristic(){
       const SVC_PASSWORD = '20aa23ad-b931-4a31-b08a-6f2a38c7b3cd'
       const CHR_PASSWORD = '7df106ea-d3b0-ba05-977a-e1fdddf0e978' 
@@ -90,8 +134,7 @@
       const SVC_DEVICE_INFO = 0x180A
       const CHR_SYSTEM_ID = 0x2A23
       
-      const SVC_OTA = '1D14D6EE-FD63-4FA1-BFA4-8F47B42119F0'
-      const CHR_OTA = 'F7BF3564-FB6D-4E53-88A4-5E37E0326063'
+
       
 
       let options ={
@@ -110,16 +153,14 @@
       .then(server => {
         log('Gatt server status: ' + server.connected)
         log('Getting Service...');
-        //return server.getPrimaryService(SVC_PASSWORD);
+        return server.getPrimaryService(SVC_PASSWORD);
         //return server.getPrimaryService(SVC_ACE_VAPING);
-        return server.getPrimaryService(SVC_OTA);
       }) 
       .then((service) => {
           log('Gatt service uuid: ' + service.uuid)
           log('Getting Characteristics...');
-          //return service.getCharacteristic(CHR_RNDOM_NMBR);
+          return service.getCharacteristic(CHR_RNDOM_NMBR);
           //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
-          return service.getCharacteristic(CHR_OTA);
       })
       .then(characteristic => {
           //characteristic.startNotifications()
