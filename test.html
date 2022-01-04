@@ -114,9 +114,12 @@
         log('Getting Descriptor...');
         console.log('Characteristic value: '+ characteristic.getDescriptors())
         return characteristic.getDescriptor('gatt.characteristic_user_description');
-      })    
-    
-  })
+      }).catch(error => {
+          this.isLoader = false;
+          this.errorMessage = error.message;
+          log('Argh! ' + error);
+          log('Message! ' + errorMessage);
+      });  
    }
    
    
