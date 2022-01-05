@@ -119,7 +119,7 @@
           .then((characteristic) => {
             log("Gatt characteristic uuid: " + characteristic.uuid);
             log("Getting Descriptor...");
-            log("Characteristic value: " + characteristic.getDescriptors());
+            log("Descriptors: " + characteristic.getDescriptors());
             return characteristic.getDescriptor(
               "gatt.characteristic_user_description"
             );
