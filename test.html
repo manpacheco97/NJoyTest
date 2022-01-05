@@ -4,9 +4,19 @@
     <form>
       <button>Connect</button>
       <pre id="log"></pre>
+      <input type="file" id="file-selector" multiple />
     </form>
 
     <script>
+      function getFiles() {
+        const fileSelector = document.getElementById("file-selector");
+        return fileSelector.files;
+      }
+    </script>
+
+    <script>
+      const MTU = 247;
+
       var Output = {
         log: function () {
           var line = Array.prototype.slice
@@ -27,6 +37,7 @@
       };
       log = Output.log;
       var deviceName = "Ace";
+
       function isWebBLEAvailable() {
         if (!navigator.bluetooth) {
           log("Web Bluetooth is not available!");
@@ -76,7 +87,7 @@
             log("Argh! " + error);
           });
       }
-      
+
       function hex_to_ascii(str1) {
         var hex = str1.toString();
         var str = "";
@@ -89,6 +100,7 @@
       function writeCharacteristic() {
         const SVC_OTA = "1D14D6EE-FD63-4FA1-BFA4-8F47B42119F0";
         const CHR_OTA = "F7BF3564-FB6D-4E53-88A4-5E37E0326063";
+        const WRITE_OTA_DATA = "984227f3-34fc-4045-a5d0-2c581f81a153";
 
         const START_OTA = 0;
         const END_OTA = 3;
@@ -98,6 +110,12 @@
           filters: [{ name: deviceName }],
           optionalServices: [SVC_OTA],
         };
+
+        log("Reading file...");
+        let files = getFiles();
+        let file = files[0];
+        var totalBytes = new Uint8Array(file.size);
+        log("Bytes in file: " + totalBytes.length);
 
         log("Requesting BLE device info...");
         navigator.bluetooth
@@ -118,11 +136,17 @@
           })
           .then((characteristic) => {
             log("Gatt characteristic uuid: " + characteristic.uuid);
-            log("Getting Descriptorr...");
-            log("Descriptors: " + characteristic.getDescriptors());
-            return characteristic.getDescriptor(
-              "gatt.characteristic_user_description"
-            );
+            //log("Descriptors: " + characteristic.getDescriptors());
+            return characteristic.readValue();
+          })
+          .then((value) => {
+            log("Entre en value");
+            log(value);
+            this.isLoader = false;
+            //value = hex_to_ascii(value);
+            log("De hex a ascii: " + value);
+            let decoder = new TextDecoder("utf-8");
+            log(decoder.decode(value));
           })
           .catch((error) => {
             this.isLoader = false;
@@ -130,6 +154,22 @@
             log("Argh! " + error);
             log("Message! " + errorMessage);
           });
+      }
+
+      function readFileBlob(fileBlob) {
+        reader = new FileReader();
+        reader.readAsBinaryString(blob);
+      }
+
+      function writeOtaData(data) {
+        try {
+          var value = new Uint8Array(MTU - 3);
+
+        } catch (error) {
+          this.errorMessage = error.message;
+          log("Argh! " + error);
+          log("Message! " + errorMessage);
+        }
       }
 
       function getCharacteristic() {
