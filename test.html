@@ -1,204 +1,210 @@
 <html>
- <head>
- </head>
- <body>
-  <form>
-   <button>Connect</button>
-   <pre id="log"></pre>
-  </form>
-  
-  <script>
-   var Output = {
-    log: function() {
-      var line = Array.prototype.slice.call(arguments).map(function(argument) {
-        return typeof argument === 'string' ? argument : JSON.stringify(argument);
-      }).join(' ');
+  <head> </head>
+  <body>
+    <form>
+      <button>Connect</button>
+      <pre id="log"></pre>
+    </form>
 
-      document.querySelector('#log').textContent += line + '\n';
-    },
+    <script>
+      var Output = {
+        log: function () {
+          var line = Array.prototype.slice
+            .call(arguments)
+            .map(function (argument) {
+              return typeof argument === "string"
+                ? argument
+                : JSON.stringify(argument);
+            })
+            .join(" ");
 
-    clearLog: function() {
-      document.querySelector('#log').textContent = '';
-    },
-  };
-  log = Output.log;
-  var deviceName = 'Ace'
-    function isWebBLEAvailable(){
-      if(!navigator.bluetooth){
-        log("Web Bluetooth is not available!")
-        return false
-      }
-      Output.clearLog()
-      return true
-    }
+          document.querySelector("#log").textContent += line + "\n";
+        },
 
-    function getDeviceInfo(){
-      let options ={
-        filters: [
-          { name: deviceName }
-        ]
+        clearLog: function () {
+          document.querySelector("#log").textContent = "";
+        },
+      };
+      log = Output.log;
+      var deviceName = "Ace";
+      function isWebBLEAvailable() {
+        if (!navigator.bluetooth) {
+          log("Web Bluetooth is not available!");
+          return false;
+        }
+        Output.clearLog();
+        return true;
       }
 
-      log('Requesting BLE device info...')
-      navigator.bluetooth.requestDevice(options)
-      .then(device => {
-        log('Connecting to GATT Server...');
-        return device.gatt.connect();
-      })
-      .then(server => {
-        log('Getting Services...');
-        return server.getPrimaryServices();
-      })
-      .then(services => {
-        log('Getting Characteristics...');
-        let queue = Promise.resolve();
-        services.forEach(service => {
-          queue = queue.then(_ => service.getCharacteristics().then(characteristics => {
-            log('> Service: ' + service.uuid);
-            characteristics.forEach(characteristic => {
-              log('>> Characteristic: ' + characteristic.uuid + ' ' +
-                  getSupportedProperties(characteristic));
+      function getDeviceInfo() {
+        let options = {
+          filters: [{ name: deviceName }],
+        };
+
+        log("Requesting BLE device info...");
+        navigator.bluetooth
+          .requestDevice(options)
+          .then((device) => {
+            log("Connecting to GATT Server...");
+            return device.gatt.connect();
+          })
+          .then((server) => {
+            log("Getting Services...");
+            return server.getPrimaryServices();
+          })
+          .then((services) => {
+            log("Getting Characteristics...");
+            let queue = Promise.resolve();
+            services.forEach((service) => {
+              queue = queue.then((_) =>
+                service.getCharacteristics().then((characteristics) => {
+                  log("> Service: " + service.uuid);
+                  characteristics.forEach((characteristic) => {
+                    log(
+                      ">> Characteristic: " +
+                        characteristic.uuid +
+                        " " +
+                        getSupportedProperties(characteristic)
+                    );
+                  });
+                })
+              );
             });
-          }));
+            return queue;
+          })
+          .catch((error) => {
+            log("Argh! " + error);
+          });
+      }
+      
+      function hex_to_ascii(str1) {
+        var hex = str1.toString();
+        var str = "";
+        for (var n = 0; n < hex.length; n += 2) {
+          str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
+        }
+        return str;
+      }
+
+      function writeCharacteristic() {
+        const SVC_OTA = "1D14D6EE-FD63-4FA1-BFA4-8F47B42119F0";
+        const CHR_OTA = "F7BF3564-FB6D-4E53-88A4-5E37E0326063";
+
+        const START_OTA = 0;
+        const END_OTA = 3;
+        const CLOSE_OTA = 4;
+
+        let options = {
+          filters: [{ name: deviceName }],
+          optionalServices: [SVC_OTA],
+        };
+
+        log("Requesting BLE device info...");
+        navigator.bluetooth
+          .requestDevice(options)
+          .then((device) => {
+            log("Connecting to GATT Server...");
+            return device.gatt.connect();
+          })
+          .then((server) => {
+            log("Gatt server status: " + server.connected);
+            log("Getting Service...");
+            return server.getPrimaryService(SVC_OTA);
+          })
+          .then((service) => {
+            log("Gatt service uuid: " + service.uuid);
+            log("Getting Characteristics...");
+            return service.getCharacteristic(CHR_OTA);
+          })
+          .then((characteristic) => {
+            log("Gatt characteristic uuid: " + characteristic.uuid);
+            log("Getting Descriptor...");
+            log("Characteristic value: " + characteristic.getDescriptors());
+            return characteristic.getDescriptor(
+              "gatt.characteristic_user_description"
+            );
+          })
+          .catch((error) => {
+            this.isLoader = false;
+            this.errorMessage = error.message;
+            log("Argh! " + error);
+            log("Message! " + errorMessage);
+          });
+      }
+
+      function getCharacteristic() {
+        const SVC_PASSWORD = "20aa23ad-b931-4a31-b08a-6f2a38c7b3cd";
+        const CHR_PASSWORD = "7df106ea-d3b0-ba05-977a-e1fdddf0e978";
+        const CHR_RNDOM_NMBR = "bd28ebcc-3bc2-9723-123d-f0911fa21670";
+        const CHR_UNLOCK_COUNT = "ec18caf2-1e96-e9ee-6a3d-b413d5578150";
+
+        const SVC_ACE_VAPING = "ae506062-db3d-9992-c0e2-f346deef8fab";
+        const CHR_POWER_LEVEL = "0c36dc5b-7af1-d9c1-12de-736622b97dda";
+        const CHR_UNLCK_TIMEOUT = "dad2d1d4-dbf7-ad85-842b-7107f5de655b";
+        const CHR_UPDATE_PASSWORD = "48f8e136-3162-bc42-9006-d649882fc53da";
+
+        const SVC_DEVICE_INFO = 0x180a;
+        const CHR_SYSTEM_ID = 0x2a23;
+
+        let options = {
+          filters: [{ name: deviceName }],
+          optionalServices: [SVC_ACE_VAPING, SVC_PASSWORD, SVC_DEVICE_INFO],
+        };
+
+        log("Requesting BLE device info...");
+        navigator.bluetooth
+          .requestDevice(options)
+          .then((device) => {
+            log("Connecting to GATT Server...");
+            return device.gatt.connect();
+          })
+          .then((server) => {
+            log("Gatt server status: " + server.connected);
+            log("Getting Service...");
+            return server.getPrimaryService(SVC_PASSWORD);
+            //return server.getPrimaryService(SVC_ACE_VAPING);
+          })
+          .then((service) => {
+            log("Gatt service uuid: " + service.uuid);
+            log("Getting Characteristics...");
+            return service.getCharacteristic(CHR_RNDOM_NMBR);
+            //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
+          })
+          .then((characteristic) => {
+            //characteristic.startNotifications()
+            log("Gatt characteristic uuid: " + characteristic.uuid);
+            // console.log('Characteristic value: '+ characteristic.value)
+            return characteristic.readValue();
+          })
+          .then((value) => {
+            log("Entre en value");
+            log(value);
+            this.isLoader = false;
+            //value = hex_to_ascii(value);
+            log("De hex a ascii: " + value);
+            let decoder = new TextDecoder("utf-8");
+            log(decoder.decode(value));
+          })
+          .catch((error) => {
+            this.isLoader = false;
+            this.errorMessage = error.message;
+            log("Argh! " + error);
+            log("Message! " + errorMessage);
+          });
+      }
+
+      document
+        .querySelector("form")
+        .addEventListener("submit", function (event) {
+          event.stopPropagation();
+          event.preventDefault();
+
+          if (isWebBLEAvailable()) {
+            //getDeviceInfo()
+            //getCharacteristic()
+            writeCharacteristic();
+          }
         });
-        return queue;
-      })
-      .catch(error => {
-        log('Argh! ' + error);
-      });
-    }
-   function hex_to_ascii(str1)
-    {
-     var hex  = str1.toString();
-     var str = '';
-     for (var n = 0; n < hex.length; n += 2) {
-      str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
-     }
-     return str;
-    }
-   
-   
-   function writeCharacteristic(){
-    const SVC_OTA = '1D14D6EE-FD63-4FA1-BFA4-8F47B42119F0'
-    const CHR_OTA = 'F7BF3564-FB6D-4E53-88A4-5E37E0326063'
-    
-    const UPG_PROC_VAL = 0x00
-    const UPG_FINISHED_VAL = 0x03
-    const UPG_CLOSE_CONNECT_VAL = 0x04
-    
-    let options ={
-        filters: [
-          { name: deviceName }
-        ],
-        optionalServices: [SVC_OTA]
-      }
-
-      log('Requesting BLE device info...')
-      navigator.bluetooth.requestDevice(options)
-      .then(device => {
-        log('Connecting to GATT Server...');
-        return device.gatt.connect();
-      })
-      .then(server => {
-        log('Gatt server status: ' + server.connected)
-        log('Getting Service...');
-        return server.getPrimaryService(SVC_OTA);
-      }) 
-      .then((service) => {
-          log('Gatt service uuid: ' + service.uuid)
-          log('Getting Characteristics...');
-          return service.getCharacteristic(CHR_OTA);
-      })
-      .then(characteristic => {
-        log('Gatt characteristic uuid: ' + characteristic.uuid)
-        log('Getting Descriptor...');
-        log('Characteristic value: '+ characteristic.getDescriptors())
-        return characteristic.getDescriptor('gatt.characteristic_user_description');
-      }).catch(error => {
-          this.isLoader = false;
-          this.errorMessage = error.message;
-          log('Argh! ' + error);
-          log('Message! ' + errorMessage);
-      });  
-   }
-   
-   
-    function getCharacteristic(){
-      const SVC_PASSWORD = '20aa23ad-b931-4a31-b08a-6f2a38c7b3cd'
-      const CHR_PASSWORD = '7df106ea-d3b0-ba05-977a-e1fdddf0e978' 
-      const CHR_RNDOM_NMBR = 'bd28ebcc-3bc2-9723-123d-f0911fa21670'
-      const CHR_UNLOCK_COUNT = 'ec18caf2-1e96-e9ee-6a3d-b413d5578150'
-      
-      const SVC_ACE_VAPING = 'ae506062-db3d-9992-c0e2-f346deef8fab'
-      const CHR_POWER_LEVEL = '0c36dc5b-7af1-d9c1-12de-736622b97dda'
-      const CHR_UNLCK_TIMEOUT = 'dad2d1d4-dbf7-ad85-842b-7107f5de655b'
-      const CHR_UPDATE_PASSWORD = '48f8e136-3162-bc42-9006-d649882fc53da'
-
-      const SVC_DEVICE_INFO = 0x180A
-      const CHR_SYSTEM_ID = 0x2A23
-      
-
-      
-
-      let options ={
-        filters: [
-          { name: deviceName }
-        ],
-        optionalServices: [SVC_ACE_VAPING, SVC_PASSWORD, SVC_DEVICE_INFO]
-      }
-
-      log('Requesting BLE device info...')
-      navigator.bluetooth.requestDevice(options)
-      .then(device => {
-        log('Connecting to GATT Server...');
-        return device.gatt.connect();
-      })
-      .then(server => {
-        log('Gatt server status: ' + server.connected)
-        log('Getting Service...');
-        return server.getPrimaryService(SVC_PASSWORD);
-        //return server.getPrimaryService(SVC_ACE_VAPING);
-      }) 
-      .then((service) => {
-          log('Gatt service uuid: ' + service.uuid)
-          log('Getting Characteristics...');
-          return service.getCharacteristic(CHR_RNDOM_NMBR);
-          //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
-      })
-      .then(characteristic => {
-          //characteristic.startNotifications()
-          log('Gatt characteristic uuid: ' + characteristic.uuid)
-         // console.log('Characteristic value: '+ characteristic.value)
-          return characteristic.readValue();
-      })
-      .then(value => {
-          log('Entre en value')
-          log(value);
-          this.isLoader = false;
-          //value = hex_to_ascii(value);
-          log('De hex a ascii: ' + value);
-          let decoder = new TextDecoder('utf-8');
-          log(decoder.decode(value));
-      })
-      .catch(error => {
-          this.isLoader = false;
-          this.errorMessage = error.message;
-          log('Argh! ' + error);
-          log('Message! ' + errorMessage);
-      });
-    }
-
-    document.querySelector('form').addEventListener('submit',
-    function(event){
-      event.stopPropagation();
-      event.preventDefault();
-
-      if(isWebBLEAvailable()){
-        //getDeviceInfo()
-        //getCharacteristic()
-       writeCharacteristic()
-      }
-    }) 
-  </script>
- </body>
+    </script>
+  </body>
 </html>
