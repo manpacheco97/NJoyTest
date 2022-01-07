@@ -1,6 +1,6 @@
 function getDeviceInfo() {
   let options = {
-    filters: [{ name: DEVICENAME }],
+    filters: [{ name: ENV.DEVICENAME }],
   };
 
   log("Requesting BLE device info...");
@@ -42,8 +42,8 @@ function getDeviceInfo() {
 function getCharacteristic() {
 
   let options = {
-    filters: [{ name: DEVICENAME }],
-    optionalServices: [SVC_ACE_VAPING, SVC_PASSWORD, SVC_DEVICE_INFO],
+    filters: [{ name: ENV.DEVICENAME }],
+    optionalServices: [ENV.SVC_ACE_VAPING, ENV.SVC_PASSWORD, ENV.SVC_DEVICE_INFO],
   };
 
   log("Requesting BLE device info...");
@@ -56,13 +56,13 @@ function getCharacteristic() {
     .then((server) => {
       log("Gatt server status: " + server.connected);
       log("Getting Service...");
-      return server.getPrimaryService(SVC_PASSWORD);
+      return server.getPrimaryService(ENV.SVC_PASSWORD);
       //return server.getPrimaryService(SVC_ACE_VAPING);
     })
     .then((service) => {
       log("Gatt service uuid: " + service.uuid);
       log("Getting Characteristics...");
-      return service.getCharacteristic(CHR_RNDOM_NMBR);
+      return service.getCharacteristic(ENV.CHR_RNDOM_NMBR);
       //return service.getCharacteristic(CHR_UNLCK_TIMEOUT);
     })
     .then((characteristic) => {
@@ -89,8 +89,8 @@ function getCharacteristic() {
 function writeCharacteristic() {
 
   let options = {
-    filters: [{ name: DEVICENAME }],
-    optionalServices: [SVC_OTA],
+    filters: [{ name: ENV.DEVICENAME }],
+    optionalServices: [ENV.SVC_OTA],
   };
 
   log("Reading file...");
@@ -109,12 +109,12 @@ function writeCharacteristic() {
     .then((server) => {
       log("Gatt server status: " + server.connected);
       log("Getting Service...");
-      return server.getPrimaryService(SVC_OTA);
+      return server.getPrimaryService(ENV.SVC_OTA);
     })
     .then((service) => {
       log("Gatt service uuid: " + service.uuid);
       log("Getting Characteristics...");
-      return service.getCharacteristic(CHR_OTA);
+      return service.getCharacteristic(ENV.CHR_OTA);
     })
     .then((characteristic) => {
       log("Gatt characteristic uuid: " + characteristic.uuid);

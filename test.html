@@ -14,6 +14,8 @@
     <script src="./webble_ace.js"></script>
 
     <script>
+      let otaControl = new Uint8Array(1);
+
       document
         .querySelector("form")
         .addEventListener("submit", function (event) {
@@ -21,26 +23,20 @@
           event.preventDefault();
 
           if (isWebBLEAvailable()) {
-            //getDeviceInfo()
-            //getCharacteristic()
-            writeCharacteristic();
+            writeOtaData();
           }
         });
 
-      function writeOtaData(data) {
+      function writeOtaData() {
         try {
           var value = new Uint8Array(MTU - 3);
 
           //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
           let options = {
-            filters: [{ name: DEVICENAME }],
-            optionalServices: [SVC_OTA],
+            filters: [{ name: ENV.DEVICENAME }],
+            optionalServices: [ENV.SVC_OTA],
           };
 
-          //Iniciar OTA Service escribiendo el valor 0.
-          startOta();
-
-          //Comienzo del for
           navigator.bluetooth
             .requestDevice(options)
             .then((device) => {
@@ -50,17 +46,13 @@
             .then((server) => {
               log("Gatt server status: " + server.connected);
               log("Getting Service...");
-              return server.getPrimaryService(SVC_OTA);
+              return server.getPrimaryService(ENV.SVC_OTA);
             })
             .then((service) => {
               log("Gatt service uuid: " + service.uuid);
-              log("Getting Characteristics...");
-              return service.getCharacteristic(WRITE_OTA_DATA);
-            })
-            .then((characteristic) => {
-              log("Gatt characteristic uuid: " + characteristic.uuid);
-              //Hacer el write con la data del firmware.
-              characteristic.writeValueWithResponse(value);
+              log("Getting Characteristics async...");
+              sendStartOta(service);
+              //return service.getCharacteristic(WRITE_OTA_DATA);
             })
             .catch((error) => {
               this.isLoader = false;
@@ -69,6 +61,36 @@
               log("Message! " + errorMessage);
             });
           //Fin del for
+        } catch (error) {
+          this.errorMessage = error.message;
+          log("Argh! " + error);
+          log("Message! " + errorMessage);
+        }
+      }
+
+      async function sendStartOta(service) {
+        try {
+          log("Start OTA Control...");
+          otaControl[0] = ENV.START_OTA;
+          let characteristic = await service.getCharacteristic(ENV.CHR_OTA);
+          log("Write Start OTA Control Value...");
+          let result = await characteristic.writeValue(otaControl);
+          log("Writing result: " + result);
+        } catch (error) {
+          this.errorMessage = error.message;
+          log("Argh! " + error);
+          log("Message! " + errorMessage);
+        }
+      }
+
+      async function sendEndOta(service) {
+        try {
+          log("End OTA Control...");
+          otaControl[0] = ENV.END_OTA;
+          let characteristic = await service.getCharacteristic(ENV.CHR_OTA);
+          log("Write End OTA Control Value...");
+          let result = await characteristic.writeValue(otaControl);
+          log("Writing result: " + result);
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);
