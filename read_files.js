@@ -1,4 +1,4 @@
-function readFileBlob(fileBlob) {
+function readFileBlob(file) {
   let buffer = new ArrayBuffer(20);
   let view = new Uint8Array(buffer);
 

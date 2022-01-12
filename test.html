@@ -7,13 +7,34 @@
       <input type="file" id="file-selector" multiple />
     </form>
 
-    <script src="./env_variables.js"></script>
     <script src="./utils.js"></script>
     <script src="./read_files.js"></script>
     <script src="./ota_helper.js"></script>
     <script src="./webble_ace.js"></script>
 
     <script>
+      const DEVICENAME = "Ace",
+        //OTA Service
+        SVC_OTA = "1d14d6ee-fd63-4fa1-bfa4-8f47b42119f0",
+        CHR_OTA = "f7bf3564-fb6d-4e53-88a4-5e37e0326063",
+        CHR_WRITE_OTA_DATA = "984227f3-34fc-4045-a5d0-2c581f81a153",
+        START_OTA = 0,
+        END_OTA = 3,
+        CLOSE_OTA = 4,
+        //Max Transfer Unit
+        MTU = 247,
+        //Other ACE Services and Characteristics
+        SVC_PASSWORD = "20aa23ad-b931-4a31-b08a-6f2a38c7b3cd",
+        CHR_PASSWORD = "7df106ea-d3b0-ba05-977a-e1fdddf0e978",
+        CHR_RNDOM_NMBR = "bd28ebcc-3bc2-9723-123d-f0911fa21670",
+        CHR_UNLOCK_COUNT = "ec18caf2-1e96-e9ee-6a3d-b413d5578150",
+        SVC_ACE_VAPING = "ae506062-db3d-9992-c0e2-f346deef8fab",
+        CHR_POWER_LEVEL = "0c36dc5b-7af1-d9c1-12de-736622b97dda",
+        CHR_UNLCK_TIMEOUT = "dad2d1d4-dbf7-ad85-842b-7107f5de655b",
+        CHR_UPDATE_PASSWORD = "48f8e136-3162-bc42-9006-d649882fc53da",
+        SVC_DEVICE_INFO = 0x180a,
+        CHR_SYSTEM_ID = 0x2a23;
+
       let otaControl = new Uint8Array(1);
 
       document
@@ -33,49 +54,97 @@
 
           //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
           let options = {
-            filters: [{ name: ENV.DEVICENAME }],
-            optionalServices: [ENV.SVC_OTA],
+            filters: [{ name: DEVICENAME }],
+            optionalServices: [SVC_OTA],
           };
 
-          navigator.bluetooth
-            .requestDevice(options)
-            .then((device) => {
-              log("Connecting to GATT Server...");
-              return device.gatt.connect();
-            })
-            .then((server) => {
-              log("Gatt server status: " + server.connected);
-              log("Getting Service...");
-              return server.getPrimaryService(ENV.SVC_OTA);
-            })
-            .then((service) => {
-              log("Gatt service uuid: " + service.uuid);
-              log("Getting Characteristics async...");
-              sendStartOta(service);
-              //return service.getCharacteristic(WRITE_OTA_DATA);
-            })
-            .catch((error) => {
-              this.isLoader = false;
-              this.errorMessage = error.message;
-              log("Argh! " + error);
-              log("Message! " + errorMessage);
-            });
-          //Fin del for
+          let file = getFiles()[0];
+          reader = new FileReader();
+          reader.readAsArrayBuffer(file);
+          log("Final version...");
+
+          //Read the input file
+          reader.onload = function (result) {
+            let arrayBuffer = result.currentTarget.result;
+
+            //Array containing every byte value from the firmware.
+            const fileArray = new Uint8Array(arrayBuffer);
+
+            //Iniciate the OTA Service calling sendStartOta function.
+            navigator.bluetooth
+              .requestDevice(options)
+              .then((device) => {
+                log("Connecting to GATT Server...");
+                device.addEventListener(
+                  "gattserverdisconnected",
+                  onDisconnected
+                );
+                return device.gatt.connect();
+              })
+              .then((server) => {
+                log("Gatt server status: " + server.connected);
+                log("Getting Service...");
+                return server.getPrimaryService(SVC_OTA);
+              })
+              .then((service) => {
+                log("Gatt service uuid: " + service.uuid);
+                log("Getting Characteristics async...");
+                let gattService = service;
+                log("gattService before promise" + gattService);
+                sendStartOta(gattService)
+                  .then((result) => {
+                    log("Result value:: " + result);
+                    if (result == "Success") {
+                      log("Result success, start loop");
+                      log("gattService after promise" + gattService);
+                      log("service after promise" + service);
+                      //Loop through the fileArray in segments of 20 bytes, connect to the characteristic and write the segment on each loop.
+                      for (let i = 0; i < fileArray.length; i += 20) {
+                        let segment = fileArray.slice(i, i + 20);
+                        //writeOta(service, segment);
+                        log("Should write segment: " + segment);
+                      }
+                      log("Loop finished");
+
+                      //Finish OTA Service by calling the sendEndOta function.
+                      sendEndOta(gattService).then((resultVal) => {
+                        log("Result after endOta: " + resultVal);
+                      });
+                    }
+                  })
+                  .catch((error) => {
+                    this.isLoader = false;
+                    log("Argh! " + error);
+                    log("Message! " + error.message);
+                  });
+              })
+              .catch((error) => {
+                this.isLoader = false;
+                log("Argh! " + error);
+                log("Message! " + error.message);
+              });
+          };
         } catch (error) {
-          this.errorMessage = error.message;
           log("Argh! " + error);
-          log("Message! " + errorMessage);
+          log("Message! " + error.message);
         }
+      }
+
+      function onDisconnected(event) {
+        const device = event.target;
+        log(`Device ${device.name} is disconnected.`);
+        device.gatt.connect();
+
       }
 
       async function sendStartOta(service) {
         try {
           log("Start OTA Control...");
-          otaControl[0] = ENV.START_OTA;
-          let characteristic = await service.getCharacteristic(ENV.CHR_OTA);
+          otaControl[0] = START_OTA;
+          let characteristic = await service.getCharacteristic(CHR_OTA);
           log("Write Start OTA Control Value...");
           let result = await characteristic.writeValue(otaControl);
-          log("Writing result: " + result);
+          return result;
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);
@@ -86,11 +155,28 @@
       async function sendEndOta(service) {
         try {
           log("End OTA Control...");
-          otaControl[0] = ENV.END_OTA;
-          let characteristic = await service.getCharacteristic(ENV.CHR_OTA);
-          log("Write End OTA Control Value...");
+          otaControl[0] = END_OTA;
+          let characteristic = await service.getCharacteristic(CHR_OTA);
+          log(
+            "Write End OTA Control Value... characteristic: " + characteristic
+          );
           let result = await characteristic.writeValue(otaControl);
           log("Writing result: " + result);
+          return result;
+        } catch (error) {
+          this.errorMessage = error.message;
+          log("Argh! " + error);
+          log("Message! " + errorMessage);
+        }
+      }
+
+      async function writeOta(service, segment) {
+        try {
+          let characteristic = await service.getCharacteristic(
+            CHR_WRITE_OTA_DATA
+          );
+          let result = await characteristic.writeValue(segment);
+          log("Writing OTA DATA result: " + result);
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);

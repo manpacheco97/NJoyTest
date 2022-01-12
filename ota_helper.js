@@ -1,4 +1,3 @@
-let otaControl = new Uint8Array(1);
 
 
 
