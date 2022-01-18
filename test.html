@@ -22,7 +22,7 @@
         END_OTA = 3,
         CLOSE_OTA = 4,
         //Max Transfer Unit
-        MTU = 247,
+        MTU = 244,
         //Other ACE Services and Characteristics
         SVC_PASSWORD = "20aa23ad-b931-4a31-b08a-6f2a38c7b3cd",
         CHR_PASSWORD = "7df106ea-d3b0-ba05-977a-e1fdddf0e978",
@@ -44,14 +44,16 @@
           event.preventDefault();
 
           if (isWebBLEAvailable()) {
+            let i = 0;
+            //testFileReading();
+            //loopFileArrayWithDelay2(i).then(() => log("terminó"));
+
             writeOtaData();
           }
         });
-
-      function writeOtaData() {
+/*
+      function testFileReading() {
         try {
-          var value = new Uint8Array(MTU - 3);
-
           //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
           let options = {
             filters: [{ name: DEVICENAME }],
@@ -61,7 +63,7 @@
           let file = getFiles()[0];
           reader = new FileReader();
           reader.readAsArrayBuffer(file);
-          log("Final version...");
+          log("testFileReading ...");
 
           //Read the input file
           reader.onload = function (result) {
@@ -69,8 +71,8 @@
 
             //Array containing every byte value from the firmware.
             const fileArray = new Uint8Array(arrayBuffer);
+            let aceDevice;
 
-            //Iniciate the OTA Service calling sendStartOta function.
             navigator.bluetooth
               .requestDevice(options)
               .then((device) => {
@@ -79,6 +81,7 @@
                   "gattserverdisconnected",
                   onDisconnected
                 );
+                aceDevice = device;
                 return device.gatt.connect();
               })
               .then((server) => {
@@ -89,27 +92,80 @@
               .then((service) => {
                 log("Gatt service uuid: " + service.uuid);
                 log("Getting Characteristics async...");
-                let gattService = service;
-                log("gattService before promise" + gattService);
-                sendStartOta(gattService)
+                let i = 0;
+                let finalSegment = fileArray.slice(
+                  fileArray.length - 20,
+                  fileArray.length
+                );
+                log("Last 20 bytes are: " + finalSegment);
+                loopFileArrayTest(fileArray, service, i).then(() => {
+                  log("Loop finished");
+                  //Disconnect device 1 second after END OTA.
+                  setTimeout(function () {
+                    aceDevice.gatt.disconnect();
+                  }, 1000);
+                });
+              })
+              .catch((error) => {
+                this.isLoader = false;
+                log("Argh! " + error);
+                log("Message! " + error.message);
+              });
+          };
+        } catch (error) {
+          log("Argh! " + error);
+          log("Message! " + error.message);
+        }
+      }*/
+
+      function writeOtaData() {
+        try {
+          //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
+          let options = {
+            filters: [{ name: DEVICENAME }],
+            optionalServices: [SVC_OTA],
+          };
+
+          let file = getFiles()[0];
+          reader = new FileReader();
+          reader.readAsArrayBuffer(file);
+          log("...writeOtaData...");
+
+          //Read the input file
+          reader.onload = function (result) {
+            let arrayBuffer = result.currentTarget.result;
+
+            //Array containing every byte value from the firmware.
+            const fileArray = new Uint8Array(arrayBuffer);
+            let aceDevice;
+
+            //Iniciate the OTA Service calling sendStartOta function.
+            navigator.bluetooth
+              .requestDevice(options)
+              .then((device) => {
+                log("Connecting to GATT Server...");
+                device.addEventListener(
+                  "gattserverdisconnected",
+                  onDisconnected
+                );
+                aceDevice = device;
+                return device.gatt.connect();
+              })
+              .then((server) => {
+                log("Gatt server status: " + server.connected);
+                log("Getting Service...");
+                return server.getPrimaryService(SVC_OTA);
+              })
+              .then((service) => {
+                log("Gatt service uuid: " + service.uuid);
+                log("Getting Characteristics async...");
+                log("Device id before OTA: " + aceDevice.id);
+                log("Device name before OTA: " + aceDevice.name);
+                sendStartOta(service)
                   .then((result) => {
                     log("Result value:: " + result);
                     if (result == "Success") {
-                      log("Result success, start loop");
-                      log("gattService after promise" + gattService);
-                      log("service after promise" + service);
-                      //Loop through the fileArray in segments of 20 bytes, connect to the characteristic and write the segment on each loop.
-                      for (let i = 0; i < fileArray.length; i += 20) {
-                        let segment = fileArray.slice(i, i + 20);
-                        //writeOta(service, segment);
-                        log("Should write segment: " + segment);
-                      }
-                      log("Loop finished");
-
-                      //Finish OTA Service by calling the sendEndOta function.
-                      sendEndOta(gattService).then((resultVal) => {
-                        log("Result after endOta: " + resultVal);
-                      });
+                      OTAConnect(fileArray, aceDevice);
                     }
                   })
                   .catch((error) => {
@@ -133,9 +189,91 @@
       function onDisconnected(event) {
         const device = event.target;
         log(`Device ${device.name} is disconnected.`);
-        device.gatt.connect();
-
       }
+
+      async function OTAConnect(fileArray, aceDevice) {
+        log("...OTAConnect function...");
+        log("Device id: " + aceDevice.id);
+        log("Device name: " + aceDevice.name);
+        aceDevice.gatt
+          .connect()
+          .then((server) => {
+            log("Gatt server status: " + server.connected);
+            log("Getting Service...");
+            return server.getPrimaryService(SVC_OTA);
+          })
+          .then((service) => {
+            log("Gatt service uuid: " + service.uuid);
+            log("Getting Characteristics async...");
+            sendStartOta(service)
+              .then((result) => {
+                log("Result value:: " + result);
+                if (result == "Success") {
+                  log("Result success, start loop");
+                  //Loop through the fileArray in segments of MTU bytes, connect to the characteristic and write the segment on each loop.
+                  let i = 0;
+                  loopFileArrayWithDelay(fileArray, service, i).then(() => {
+                    log("Loop finished");
+
+                    //Finish OTA Service by calling the sendEndOta function.
+                    sendEndOta(service).then((resultVal) => {
+                      log("Result after endOta: " + resultVal);
+
+                      //Disconnect device 1 second after END OTA.
+                      setTimeout(function () {
+                        aceDevice.gatt.disconnect();
+                      }, 1000);
+                    });
+                  });
+                }
+              })
+              .catch((error) => {
+                this.isLoader = false;
+                log("Argh! " + error);
+                log("Message! " + error.message);
+              });
+          })
+          .catch((error) => {
+            this.isLoader = false;
+            log("Argh! " + error);
+            log("Message! " + error.message);
+          });
+      }
+
+      async function loopFileArrayWithDelay(fileArray, service, i) {
+        let segment = fileArray.slice(i, i + MTU);
+        log("Segment: " + segment);
+        await writeOta(service, segment);
+        i += MTU;
+        if (i < fileArray.length) {
+          await loopFileArrayWithDelay(fileArray, service, i);
+        }
+      }
+/*
+      async function loopFileArrayTest(fileArray, service, i) {
+        let testMTU = 236;
+        let segment = fileArray.slice(i, i + testMTU);
+        log("Entered function with i: " + i);
+        await delayTest(segment);
+        i += testMTU;
+        if (i < fileArray.length) {
+          await loopFileArrayTest(fileArray, service, i);
+        }
+      }
+
+      async function delayTest(segment) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        log("Segment " + segment + " written!");
+      }
+
+      async function loopFileArrayWithDelay2(i) {
+        log("Should write segment: " + i);
+        await prueba();
+        i += 244;
+        if (i < 218624) {
+          await loopFileArrayWithDelay2(i);
+        }
+      }*/
 
       async function sendStartOta(service) {
         try {
