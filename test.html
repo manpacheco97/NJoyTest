@@ -13,28 +13,6 @@
     <script src="./webble_ace.js"></script>
 
     <script>
-      const DEVICENAME = "Ace",
-        //OTA Service
-        SVC_OTA = "1d14d6ee-fd63-4fa1-bfa4-8f47b42119f0",
-        CHR_OTA = "f7bf3564-fb6d-4e53-88a4-5e37e0326063",
-        CHR_WRITE_OTA_DATA = "984227f3-34fc-4045-a5d0-2c581f81a153",
-        START_OTA = 0,
-        END_OTA = 3,
-        CLOSE_OTA = 4,
-        //Max Transfer Unit
-        MTU = 244,
-        //Other ACE Services and Characteristics
-        SVC_PASSWORD = "20aa23ad-b931-4a31-b08a-6f2a38c7b3cd",
-        CHR_PASSWORD = "7df106ea-d3b0-ba05-977a-e1fdddf0e978",
-        CHR_RNDOM_NMBR = "bd28ebcc-3bc2-9723-123d-f0911fa21670",
-        CHR_UNLOCK_COUNT = "ec18caf2-1e96-e9ee-6a3d-b413d5578150",
-        SVC_ACE_VAPING = "ae506062-db3d-9992-c0e2-f346deef8fab",
-        CHR_POWER_LEVEL = "0c36dc5b-7af1-d9c1-12de-736622b97dda",
-        CHR_UNLCK_TIMEOUT = "dad2d1d4-dbf7-ad85-842b-7107f5de655b",
-        CHR_UPDATE_PASSWORD = "48f8e136-3162-bc42-9006-d649882fc53da",
-        SVC_DEVICE_INFO = 0x180a,
-        CHR_SYSTEM_ID = 0x2a23;
-
       let otaControl = new Uint8Array(1);
 
       document
@@ -47,80 +25,23 @@
             let i = 0;
             //testFileReading();
             //loopFileArrayWithDelay2(i).then(() => log("terminó"));
+            //getCharacteristic();
+            // getDeviceInfo();
+            // writeOtaData();
+            //testReadValMethod();
 
-            writeOtaData();
+            getDeviceServiceCharacteristic(
+              DEVICENAME,
+              SVC_DEVICE_INFO,
+              CHR_SYSTEM_ID
+            ).then((characteristic) => {
+              log("Characteristic uuid: " + characteristic.uuid);
+            });
           }
         });
-/*
-      function testFileReading() {
-        try {
-          //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
-          let options = {
-            filters: [{ name: DEVICENAME }],
-            optionalServices: [SVC_OTA],
-          };
-
-          let file = getFiles()[0];
-          reader = new FileReader();
-          reader.readAsArrayBuffer(file);
-          log("testFileReading ...");
-
-          //Read the input file
-          reader.onload = function (result) {
-            let arrayBuffer = result.currentTarget.result;
-
-            //Array containing every byte value from the firmware.
-            const fileArray = new Uint8Array(arrayBuffer);
-            let aceDevice;
-
-            navigator.bluetooth
-              .requestDevice(options)
-              .then((device) => {
-                log("Connecting to GATT Server...");
-                device.addEventListener(
-                  "gattserverdisconnected",
-                  onDisconnected
-                );
-                aceDevice = device;
-                return device.gatt.connect();
-              })
-              .then((server) => {
-                log("Gatt server status: " + server.connected);
-                log("Getting Service...");
-                return server.getPrimaryService(SVC_OTA);
-              })
-              .then((service) => {
-                log("Gatt service uuid: " + service.uuid);
-                log("Getting Characteristics async...");
-                let i = 0;
-                let finalSegment = fileArray.slice(
-                  fileArray.length - 20,
-                  fileArray.length
-                );
-                log("Last 20 bytes are: " + finalSegment);
-                loopFileArrayTest(fileArray, service, i).then(() => {
-                  log("Loop finished");
-                  //Disconnect device 1 second after END OTA.
-                  setTimeout(function () {
-                    aceDevice.gatt.disconnect();
-                  }, 1000);
-                });
-              })
-              .catch((error) => {
-                this.isLoader = false;
-                log("Argh! " + error);
-                log("Message! " + error.message);
-              });
-          };
-        } catch (error) {
-          log("Argh! " + error);
-          log("Message! " + error.message);
-        }
-      }*/
 
       function writeOtaData() {
         try {
-          //Recorrer file en segmentos de MTU-3 y en cada recorrido acceder a la characteristic correspondiente y hacer el write.
           let options = {
             filters: [{ name: DEVICENAME }],
             optionalServices: [SVC_OTA],
@@ -153,20 +74,14 @@
               })
               .then((server) => {
                 log("Gatt server status: " + server.connected);
-                log("Getting Service...");
+                log("Getting Silicon Labs OTA service...");
                 return server.getPrimaryService(SVC_OTA);
               })
               .then((service) => {
                 log("Gatt service uuid: " + service.uuid);
-                log("Getting Characteristics async...");
-                log("Device id before OTA: " + aceDevice.id);
-                log("Device name before OTA: " + aceDevice.name);
                 sendStartOta(service)
-                  .then((result) => {
-                    log("Result value:: " + result);
-                    if (result == "Success") {
-                      OTAConnect(fileArray, aceDevice);
-                    }
+                  .then(() => {
+                    OTAConnect(fileArray, aceDevice);
                   })
                   .catch((error) => {
                     this.isLoader = false;
@@ -192,40 +107,43 @@
       }
 
       async function OTAConnect(fileArray, aceDevice) {
-        log("...OTAConnect function...");
-        log("Device id: " + aceDevice.id);
-        log("Device name: " + aceDevice.name);
+        log("...OTAConnect...");
         aceDevice.gatt
           .connect()
           .then((server) => {
             log("Gatt server status: " + server.connected);
-            log("Getting Service...");
+            log("Getting Silicon Labs OTA service...");
             return server.getPrimaryService(SVC_OTA);
           })
           .then((service) => {
             log("Gatt service uuid: " + service.uuid);
-            log("Getting Characteristics async...");
             sendStartOta(service)
-              .then((result) => {
-                log("Result value:: " + result);
-                if (result == "Success") {
-                  log("Result success, start loop");
-                  //Loop through the fileArray in segments of MTU bytes, connect to the characteristic and write the segment on each loop.
-                  let i = 0;
-                  loopFileArrayWithDelay(fileArray, service, i).then(() => {
-                    log("Loop finished");
+              .then(() => {
+                aceDevice.gatt
+                  .connect()
+                  .then((serverr) => {
+                    log("Gatt server status: " + serverr.connected);
+                    log("Getting Silicon Labs OTA service...");
+                    return serverr.getPrimaryService(SVC_OTA);
+                  })
+                  .then((serviceOTA) => {
+                    log("Gatt service uuid: " + serviceOTA.uuid);
+                    //Loop through the fileArray in segments of MTU bytes, connect to the characteristic and write the segment on each loop.
+                    let i = 0;
+                    loopFileArrayWithDelay(fileArray, serviceOTA, i).then(
+                      () => {
+                        log("Loop finished");
 
-                    //Finish OTA Service by calling the sendEndOta function.
-                    sendEndOta(service).then((resultVal) => {
-                      log("Result after endOta: " + resultVal);
-
-                      //Disconnect device 1 second after END OTA.
-                      setTimeout(function () {
-                        aceDevice.gatt.disconnect();
-                      }, 1000);
-                    });
+                        //Finish OTA Service by calling the sendEndOta function.
+                        sendEndOta(serviceOTA).then(() => {
+                          //Disconnect device 1 second after END OTA.
+                          setTimeout(function () {
+                            aceDevice.gatt.disconnect();
+                          }, 1000);
+                        });
+                      }
+                    );
                   });
-                }
               })
               .catch((error) => {
                 this.isLoader = false;
@@ -242,6 +160,7 @@
 
       async function loopFileArrayWithDelay(fileArray, service, i) {
         let segment = fileArray.slice(i, i + MTU);
+        log("Value of i: " + i);
         log("Segment: " + segment);
         await writeOta(service, segment);
         i += MTU;
@@ -249,40 +168,18 @@
           await loopFileArrayWithDelay(fileArray, service, i);
         }
       }
-/*
-      async function loopFileArrayTest(fileArray, service, i) {
-        let testMTU = 236;
-        let segment = fileArray.slice(i, i + testMTU);
-        log("Entered function with i: " + i);
-        await delayTest(segment);
-        i += testMTU;
-        if (i < fileArray.length) {
-          await loopFileArrayTest(fileArray, service, i);
-        }
-      }
-
-      async function delayTest(segment) {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        log("Segment " + segment + " written!");
-      }
-
-      async function loopFileArrayWithDelay2(i) {
-        log("Should write segment: " + i);
-        await prueba();
-        i += 244;
-        if (i < 218624) {
-          await loopFileArrayWithDelay2(i);
-        }
-      }*/
 
       async function sendStartOta(service) {
         try {
           log("Start OTA Control...");
           otaControl[0] = START_OTA;
           let characteristic = await service.getCharacteristic(CHR_OTA);
-          log("Write Start OTA Control Value...");
+          log(
+            "Write Start OTA Control Value... characteristic: " +
+              characteristic.uuid
+          );
           let result = await characteristic.writeValue(otaControl);
-          return result;
+          log("Writing Start OTA result: " + result);
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);
@@ -296,11 +193,11 @@
           otaControl[0] = END_OTA;
           let characteristic = await service.getCharacteristic(CHR_OTA);
           log(
-            "Write End OTA Control Value... characteristic: " + characteristic
+            "Write End OTA Control Value... characteristic: " +
+              characteristic.uuid
           );
           let result = await characteristic.writeValue(otaControl);
           log("Writing result: " + result);
-          return result;
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);
@@ -313,8 +210,8 @@
           let characteristic = await service.getCharacteristic(
             CHR_WRITE_OTA_DATA
           );
-          let result = await characteristic.writeValue(segment);
-          log("Writing OTA DATA result: " + result);
+          await characteristic.writeValue(segment);
+          log("After Writing OTA DATA");
         } catch (error) {
           this.errorMessage = error.message;
           log("Argh! " + error);
